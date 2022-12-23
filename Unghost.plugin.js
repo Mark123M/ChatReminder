@@ -54,8 +54,8 @@ const config = {
           type: "textbox",
           id: "reminderInterval",
           name: "Reminder Interval",
-          note: "Set the time interval (in minutes) between each reminder",
-          value: 30
+          note: "Enter a positive integer to set the time interval (in minutes) between each reminder. Any other input will reset the interval to 15 min",
+          value: 15
       } 
     ],
     changelog: [
@@ -121,6 +121,7 @@ const config = {
     //console.log(allDMChannels)
   
     let allGhosted = [];
+    let reminderModal = null
    // const ReadStateStore = DiscordModules.ReadStateStore
    /* console.log(RelationshipStore.getFriendIDs(), 'friendids');
     console.log(UserStore.getUser(RelationshipStore.getFriendIDs()[100]), 'get one user')
@@ -193,7 +194,7 @@ const config = {
             this.patchGuildContextMenu();
   
             allGhosted = BdApi.loadData('Unghost', 'ghosted') === undefined ? [] : BdApi.loadData('Unghost', 'ghosted');  //load all previously saved reminders
-            setInterval(()=>{
+            reminderModal =  setInterval(()=>{
              /* const display = allGhosted.map(g=>{document.createElement(
                   `<div style = "width: 200px; height: 40px; color: white;">
                       ${g[1]}
@@ -201,14 +202,35 @@ const config = {
                   `)
               }) */
               console.log(allGhosted)
-              Modals.showModal("Remember to respond!", allGhosted,
-              {danger: false, confirmText: "Okay", cancelText: "Cancel"})
+              
+              const listHTML = BdApi.DOM.parseHTML(
+              `<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
+                  ${allGhosted.map(g =>
+                      `<div class = "reminderListItem" style = "display: flex; align-items: center; margin-top: 10px; margin-left: 5px;"> 
+                          <img src = ${g[3]} style = "border-radius: 50%; height: 60px; width: 60px "> 
+                          <span style= "margin-left: 12px;" > 
+                              <div class = "listItemInfo">
+                                  <div class = "listItemUser" style = "font-weight: 700; color: #f8f8f9;"> ${g[1] + " #" + g[2]} </div>
+                                  <div class = "listItemMsg" style = "margin-top: 5px;"> ${g[4]}</div>
+                              </div>
+                          </span>
+                      </div>`
+                  ).join("")}
+              </div>`)
+              console.log(listHTML)
+              console.log(parseInt(this.settings.reminderInterval))
   
-            }, 10000)
+              // const testHTML = BdApi.DOM.parseHTML( `<div class = "reminderList" style = "color: ;"> hello </div>`)
+  
+            //  BdApi.UI.alert("Remember to respond!", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(listHTML)))
+  
+            }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
+            ? parseInt(this.settings.reminderInterval) : 15*60000)
         }
   
         onStop() {
             BdApi.saveData('Unghost', 'ghosted', allGhosted)
+            clearInterval(reminderModal)
             const elements = document.querySelectorAll(".popout-role-members");
             for (const el of elements) el && el.remove();
             Patcher.unpatchAll(this.name);
@@ -222,11 +244,12 @@ const config = {
        //   console.log('switched channels to:', lastChannelId, allDMChannels.includes(lastChannelId)? 'is a dm': 'is not a dm')
           
           //Check if the channel you checked is a dm
-          if(allDMChannels.includes(lastChannelId)){
+          if(ChannelStore.getChannel(lastChannelId).name === ""){
               const messages = MessageStore.getMessages(lastChannelId)._array
               const lastMsg = messages[messages.length - 1]
               const currentUser = UserStore.getCurrentUser()
-            //  console.log(lastMsg);
+            
+              console.log(lastMsg.author, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
             //  console.log(currentUser)
   
               if (lastMsg.author.id != currentUser.id){
@@ -242,12 +265,165 @@ const config = {
               } else { //if you sent the last message, remove the person from ghosted list
                   allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(lastChannelId).recipients[0]) 
                   BdApi.saveData('Unghost', 'ghosted', allGhosted)
+                  
                  // console.log('all ghosted', allGhosted)
               }
           }
         }
         getSettingsPanel(){
           return this.buildSettingsPanel().getElement();
+        }
+  
+  
+        patchRoleMention() {
+            const Pill = Webpack.getModule(m => m?.toString().includes("iconMentionText"), {defaultExport: false});
+            Patcher.before(this.name, Pill, "Z", (_, [props]) => {
+                if (!props?.className.toLowerCase().includes("rolemention")) return;
+                props.className += ` interactive`;
+                props.onClick = (e) => {
+                    const roles = GuildStore.getGuild(SelectedGuildStore.getGuildId()).roles;
+                    const name = props.children[1][0].slice(1);
+                    let role = filter(roles, r => r.name == name);
+                    if (!role) return;
+                    role = role[Object.keys(role)[0]];
+                    this.showRolePopout(e.nativeEvent.target, SelectedGuildStore.getGuildId(), role.id);
+                };
+            });
+        }
+  
+        patchGuildContextMenu() {
+            this.contextMenuPatch = ContextMenu.patch("guild-context", (retVal, props) => {
+                const guild = props.guild;
+                const guildId = guild.id;
+                const roles = guild.roles;
+                const roleItems = [];
+  
+                for (const roleId in roles) {
+                    const role = roles[roleId];
+                    const item = ContextMenu.buildItem({
+                        id: roleId,
+                        label: role.name,
+                        style: {color: role.colorString ? role.colorString : ""},
+                        closeOnClick: false,
+                        action: (e) => {
+                            if (e.ctrlKey) {
+                                try {
+                                    DiscordNative.clipboard.copy(role.id);
+                                    UI.showToast("Copied Role ID to clipboard!", {type: "success"});
+                                }
+                                catch {
+                                    UI.showToast("Could not copy Role ID to clipboard", {type: "success"});
+                                }
+                            }
+                            else {
+                                this.showRolePopout({
+                                    getBoundingClientRect() {
+                                        return {
+                                            top: e.pageY,
+                                            bottom: e.pageY,
+                                            left: e.pageX,
+                                            right: e.pageX
+                                        };
+                                    }
+                                }, guildId, role.id);
+                            }
+                        }
+                    });
+                    roleItems.push(item);
+                }
+  
+                const newOne = ContextMenu.buildItem({type: "submenu", label: "Role Members", children: roleItems});
+  
+                const separatorIndex = retVal.props.children.findIndex(k => !k?.props?.label);
+                const insertIndex = separatorIndex > 0 ? separatorIndex + 1 : 1;
+                retVal.props.children.splice(insertIndex, 0, newOne);
+                // return original;
+  
+            });
+        }
+  
+        showRolePopout(target, guildId, roleId) {
+            const roles = GuildStore.getGuild(guildId).roles;
+            const role = roles[roleId];
+            let members = GuildMemberStore.getMembers(guildId);
+            if (guildId != roleId) members = members.filter(m => m.roles.includes(role.id));
+  
+            const popout = DOM.parseHTML(Utilities.formatString(popoutHTML, {memberCount: members.length}));
+            const searchInput = popout.querySelector("input");
+            searchInput.addEventListener("keyup", () => {
+                const items = popout.querySelectorAll(".role-member");
+                for (let i = 0, len = items.length; i < len; i++) {
+                    const search = searchInput.value.toLowerCase();
+                    const item = items[i];
+                    const username = item.querySelector(".username").textContent.toLowerCase();
+                    if (!username.includes(search)) item.style.display = "none";
+                    else item.style.display = "";
+                }
+            });
+  
+            const scroller = popout.querySelector(".role-members");
+            for (const member of members) {
+                const user = UserStore.getUser(member.userId);
+                const elem = DOM.parseHTML(Utilities.formatString(itemHTML, {username: Utils.escapeHTML(user.username), discriminator: "#" + user.discriminator, avatar_url: ImageResolver.getUserAvatarURL(user)}));
+                elem.addEventListener("click", () => {
+                    // UI.showToast("User popouts are currently broken!", {type: "error"});
+                    setTimeout(() => Popouts.showUserPopout(elem, user, {guild: guildId}), 1);
+                });
+                scroller.append(elem);
+            }
+  
+            this.showPopout(popout, target);
+            searchInput.focus();
+        }
+  
+        showPopout(popout, relativeTarget) {
+            if (this.listener) this.listener({target: {classList: {contains: () => {}}, closest: () => {}}}); // Close any previous popouts
+            
+            document.querySelector(`[class*="app-"] ~ ${DiscordSelectors.TooltipLayers.layerContainer}`).append(popout);
+  
+            const maxWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+            const maxHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+  
+            const offset = relativeTarget.getBoundingClientRect();
+            if (offset.right + popout.offsetHeight >= maxWidth) {
+                // popout.classList.add(...DiscordClasses.Popouts.popoutLeft.value.split(" "));
+                popout.style.left = Math.round(offset.left - popout.offsetWidth - 20) + "px";
+                // popout.animate({left: Math.round(offset.left - popout.offsetWidth - 10)}, 100);
+                const original = Math.round(offset.left - popout.offsetWidth - 20);
+                const endPoint = Math.round(offset.left - popout.offsetWidth - 10);
+                DOM.animate(function(progress) {
+                        let value = 0;
+                        if (endPoint > original) value = original + (progress * (endPoint - original));
+                        else value = original - (progress * (original - endPoint));
+                        popout.style.left = value + "px";
+                }, 100);
+            }
+            else {
+                // popout.classList.add(...DiscordClasses.Popouts.popoutRight.value.split(" "));
+                popout.style.left = (offset.right + 10) + "px";
+                // popout.animate({left: offset.right}, 100);
+                const original = offset.right + 10;
+                const endPoint = offset.right;
+                DOM.animate(function(progress) {
+                        let value = 0;
+                        if (endPoint > original) value = original + (progress * (endPoint - original));
+                        else value = original - (progress * (original - endPoint));
+                        popout.style.left = value + "px";
+                }, 100);
+            }
+  
+            if (offset.top + popout.offsetHeight >= maxHeight) popout.style.top = Math.round(maxHeight - popout.offsetHeight) + "px";
+            else popout.style.top = offset.top + "px";
+  
+            this.listener = (e) => {
+                const target = e.target;
+                if (!target.classList.contains("popout-role-members") && !target.closest(".popout-role-members")) {
+                    popout.remove();
+                    document.removeEventListener("click", this.listener);
+                    delete this.listener;
+                }
+            };
+            setTimeout(() => document.addEventListener("click", this.listener), 500);
         }
   
     };
