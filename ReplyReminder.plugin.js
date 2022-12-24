@@ -40,22 +40,22 @@ const config = {
         ],
         version: "0.0.1",
         description: "Notifies you if you have ghosted someone.",
-        github: "https://github.com/Mark123M/unghost",
+        github: "https://github.com/Mark123M/ReplyReminder",
     },
     defaultConfig: [
       {
           type: "switch",
-          id: "showReminders",
-          name: "Show Reminders",
-          note: "Turning this on would show reminders",
+          id: "showAutoReminders",
+          name: "Show auto reminders",
+          note: "Turning this on would show auto reminders",
           value: true
       },
       {
           type: "textbox",
           id: "reminderInterval",
           name: "Reminder Interval",
-          note: "Enter a positive integer to set the time interval (in minutes) between each reminder. Any other input will reset the interval to 15 min",
-          value: 10000
+          note: "Enter a positive integer to set the time interval (in minutes) between each reminder. Any other input will reset the interval to 20 min",
+          value: 20
       } 
     ],
     changelog: [
@@ -100,7 +100,7 @@ const config = {
    : (([Plugin, Api]) => {
      const plugin = (Plugin, Api) => {
     const {DOM, ContextMenu, Patcher, Webpack, UI, Utils} = window.BdApi;
-    const {DiscordModules, DiscordSelectors, Utilities, Popouts, Modals} = Api;
+    const {DiscordModules, DiscordSelectors, Utilities, Popouts, Modals, DCM} = Api;
   
     const from = arr => arr && arr.length > 0 && Object.assign(...arr.map(([k, v]) => ({[k]: v})));
     const filter = (obj, predicate) => from(Object.entries(obj).filter((o) => {return predicate(o[1]);}));
@@ -123,7 +123,9 @@ const config = {
     return class RoleMembers extends Plugin {
   
         onStart() {
-  
+            console.log(parseInt(this.settings.reminderInterval))
+            console.log(DCM)
+
             allGhosted = BdApi.loadData('Unghost', 'ghosted') === undefined ? [] : BdApi.loadData('Unghost', 'ghosted');  //load all previously saved reminders
             reminderModal =  setInterval(()=>{
               console.log(allGhosted)
@@ -151,7 +153,7 @@ const config = {
               BdApi.UI.alert("Remember to respond!", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(listHTML)))
   
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
-            ? parseInt(this.settings.reminderInterval) : 3000)
+            ? parseInt(this.settings.reminderInterval)*60000 : 2000)
         }
   
         onStop() {
@@ -164,7 +166,7 @@ const config = {
           console.log(ChannelStore.getChannel(lastChannelId), 'lastchannel')
           
           //Check if the last visited channel is a dm
-          if(ChannelStore.getChannel(lastChannelId).name === ""){
+          if(ChannelStore.getChannel(lastChannelId).name === "" && MessageStore.getMessages(lastChannelId)._array.length > 0){
               const messages = MessageStore.getMessages(lastChannelId)._array
               const lastMsg = messages[messages.length - 1]
               const currentUser = UserStore.getCurrentUser()
