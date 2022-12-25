@@ -53,8 +53,8 @@ const config = {
       {
           type: "textbox",
           id: "reminderInterval",
-          name: "Reminder Interval",
-          note: "Enter a positive integer to set the time interval (in minutes) between each reminder. Any other input will reset the interval to 20 min",
+          name: "Auto reminder interval",
+          note: "Enter a positive integer to set the time interval (in minutes) between each auto reminder. Any other input will reset the interval to 20 min",
           value: 20
       } 
     ],
@@ -99,8 +99,8 @@ const config = {
   }
    : (([Plugin, Api]) => {
      const plugin = (Plugin, Api) => {
-    const {DOM, ContextMenu, Patcher, Webpack, UI, Utils} = window.BdApi;
-    const {DiscordModules, DiscordSelectors, Utilities, Popouts, Modals, DCM} = Api;
+    const {DOM, Patcher, Webpack, UI, Utils, ContextMenu} = window.BdApi;
+    const {DiscordModules, DiscordSelectors, Utilities, Popouts, Modals, DCM, WebpackModules} = Api;
   
     const from = arr => arr && arr.length > 0 && Object.assign(...arr.map(([k, v]) => ({[k]: v})));
     const filter = (obj, predicate) => from(Object.entries(obj).filter((o) => {return predicate(o[1]);}));
@@ -117,48 +117,58 @@ const config = {
     const allDMChannels = RelationshipStore.getFriendIDs().map(id => ChannelStore.getDMFromUserId(id))
   
     let allGhosted = [];
-    let reminderModal = null
+    let allReminders = [];
+    let autoReminderModal = null
+    let manualReminderModal = null
   
   
     return class RoleMembers extends Plugin {
   
         onStart() {
             console.log(parseInt(this.settings.reminderInterval))
-            console.log(DCM)
 
-            allGhosted = BdApi.loadData('Unghost', 'ghosted') === undefined ? [] : BdApi.loadData('Unghost', 'ghosted');  //load all previously saved reminders
-            reminderModal =  setInterval(()=>{
+            this.patchMessageContextMenu();
+
+            allGhosted = BdApi.loadData('ReplyReminder', 'ghosted') === undefined ? [] : BdApi.loadData('ReplyReminder', 'ghosted');  //load all ghosted messages
+            allReminders = BdApi.loadData('ReplyReminder', 'reminders') === undefined? [] : BdApi.loadData('ReplyReminder', 'reminders'); //load all reminders
+
+            this.showAutoReminderModal(allGhosted) //display auto reminder on startup
+
+            autoReminderModal = setInterval(()=>{
               console.log(allGhosted)
-              
-              const listHTML = BdApi.DOM.parseHTML(
-              `<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
-                  ${allGhosted.map(g =>
-                      `<div class = "reminderListItem" style = "display: flex; align-items: center; margin-top: 10px; margin-left: 5px;"> 
-                          <img src = ${g[3]} style = "border-radius: 50%; height: 60px; width: 60px "> 
-                          <span style= "margin-left: 12px;" > 
-                              <div class = "listItemInfo">
-                                  <div class = "listItemUser" style = "font-weight: 700; color: #f8f8f9;"> 
-                                    ${g[1] + " #" + g[2]} 
-                                  </div>
-                                  <div class = "listItemMsg" style = "margin-top: 5px;"> ${g[4]}</div>
-                              </div>
-                          </span>
-                      </div>`
-                  ).join("")}
-              </div>`)
-              console.log(listHTML)
-              console.log(parseInt(this.settings.reminderInterval))
-  
-             // const testHTML = BdApi.DOM.parseHTML( `<div class = "reminderList" style = "color: ;"> hello </div>`)
-              BdApi.UI.alert("Remember to respond!", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(listHTML)))
+             // console.log(parseInt(this.settings.reminderInterval))
+
+              this.showAutoReminderModal(allGhosted)
   
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
-            ? parseInt(this.settings.reminderInterval)*60000 : 2000)
+            ? parseInt(this.settings.reminderInterval)*60000 : 5000)
         }
-  
+        showAutoReminderModal(list){
+
+            const autoReminderModalHTML = BdApi.DOM.parseHTML
+            ( `<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
+            ${list.map(g =>
+                `<div class = "reminderListItem" style = "display: flex; align-items: center; margin-top: 10px; margin-left: 5px;"> 
+                    <img src = ${g[3]} style = "border-radius: 50%; height: 60px; width: 60px "> 
+                    <span style= "margin-left: 12px;" > 
+                        <div class = "listItemInfo">
+                            <div class = "listItemUser" style = "font-weight: 700; color: #f8f8f9;"> 
+                              ${g[1] + " #" + g[2]} 
+                            </div>
+                            <div class = "listItemMsg" style = "margin-top: 5px;"> ${g[4]}</div>
+                        </div>
+                    </span>
+                </div>`
+            ).join("")}
+            </div>`)
+
+            const autoReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(autoReminderModalHTML))
+            BdApi.UI.alert("Remember to respond!", autoReminderModalElement)
+        }
         onStop() {
-            BdApi.saveData('Unghost', 'ghosted', allGhosted)
-            clearInterval(reminderModal)
+            BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)
+            clearInterval(autoReminderModal)
+           this.contextMenuPatch?.();
         }
         
         onSwitch(){
@@ -177,15 +187,28 @@ const config = {
                   //filter the array and replace the previous message of the same author with their new message
                   allGhosted = allGhosted.filter(g => g[0] !== lastMsg.author.id)
                   allGhosted.push([lastMsg.author.id, lastMsg.author.username, lastMsg.author.discriminator, ImageResolver.getUserAvatarURL(lastMsg.author), lastMsg.content] )
-                  BdApi.saveData('Unghost', 'ghosted', allGhosted) 
+                  BdApi.saveData('ReplyReminder', 'ghosted', allGhosted) 
                   
               } else { 
                   //filter the array to remove the previous message of the author.
                   allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(lastChannelId).recipients[0]) 
-                  BdApi.saveData('Unghost', 'ghosted', allGhosted)  
+                  BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)  
                  // console.log('all ghosted', allGhosted)
               }
           }
+        }
+        patchMessageContextMenu() {
+            this.contextMenuPatch = ContextMenu.patch("message", (retVal, props) => {
+                retVal.props.children.push(
+                    ContextMenu.buildItem({type: "separator"}),
+                    ContextMenu.buildItem({label: "Remind me!", action: () => {
+                        console.log(retVal)
+                        BdApi.showToast("Reminder Created", {type: "success"});
+                    }})
+                ); 
+               // console.log(retVal)
+
+            });
         }
         getSettingsPanel(){
           return this.buildSettingsPanel().getElement();
