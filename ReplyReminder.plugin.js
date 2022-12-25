@@ -69,6 +69,8 @@ const config = {
     ],
     main: "index.js"
   };
+
+
   
   module.exports = !global.ZeresPluginLibrary ?
   class {
@@ -120,13 +122,22 @@ const config = {
     let allReminders = [];
     let autoReminderModal = null
     let manualReminderModal = null
-  
-  
+   
+
+   // const messageBox = document.querySelector("div.chat-2ZfjoI")
+    let messageBox = null;
+    let messageSelector = null
+    //BRUH IT DOES WORK IT JUST DOESNT HAVE A E.TARGET.VALUE FIELD
+
     return class RoleMembers extends Plugin {
   
         onStart() {
-            console.log(parseInt(this.settings.reminderInterval))
+            messageBox = document.querySelector('[aria-label^="Messages in"]')
+            console.log(messageBox, 'starting message box')
+            messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});
 
+            console.log(parseInt(this.settings.reminderInterval))
+//ds
             this.patchMessageContextMenu();
 
             allGhosted = BdApi.loadData('ReplyReminder', 'ghosted') === undefined ? [] : BdApi.loadData('ReplyReminder', 'ghosted');  //load all ghosted messages
@@ -143,8 +154,9 @@ const config = {
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
             ? parseInt(this.settings.reminderInterval)*60000 : 5000)
         }
-        showAutoReminderModal(list){
 
+
+        showAutoReminderModal(list){
             const autoReminderModalHTML = BdApi.DOM.parseHTML
             ( `<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
             ${list.map(g =>
@@ -163,53 +175,75 @@ const config = {
             </div>`)
 
             const autoReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(autoReminderModalHTML))
-            BdApi.UI.alert("Remember to respond!", autoReminderModalElement)
+            BdApi.UI.alert("Auto-Reminders", autoReminderModalElement)
         }
+
+       /* showNewReminderModal(message){
+            const newReminderModalHTML = BdApi.DOM.parseHTML
+            (`<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
+
+
+            )
+            Modals.showModal("Create New Reminder", 
+            )
+        } */
+
+
+        patchMessageContextMenu() {
+            this.contextMenuPatch = ContextMenu.patch("message", (retVal, props) => {
+                retVal.props.children.push(
+                    ContextMenu.buildItem({type: "separator"}),
+                    ContextMenu.buildItem({label: "Remind me!", action: () => {
+                        console.log(messageSelector)
+                        BdApi.showToast("Reminder Created", {type: "success"});
+                        BdApi.UI.alert("Create a Reminder", newReminderModalElement)
+                    }})
+                ); 
+               // console.log(retVal)
+            });
+        }
+
+
+        onSwitch(){
+            messageBox = document.querySelector('[aria-label^="Messages in"]')
+            console.log(messageBox, 'new message box')
+            messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});
+
+            const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
+            console.log(ChannelStore.getChannel(lastChannelId), 'lastchannel')
+            
+            //Check if the last visited channel is a dm
+            if(ChannelStore.getChannel(lastChannelId).name === "" && MessageStore.getMessages(lastChannelId)._array.length > 0){
+                const messages = MessageStore.getMessages(lastChannelId)._array
+                const lastMsg = messages[messages.length - 1]
+                const currentUser = UserStore.getCurrentUser()
+              
+                console.log(lastMsg.author, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
+    
+                if (lastMsg.author.id != currentUser.id){
+                    //filter the array and replace the previous message of the same author with their new message
+                    allGhosted = allGhosted.filter(g => g[0] !== lastMsg.author.id)
+                    allGhosted.push([lastMsg.author.id, lastMsg.author.username, lastMsg.author.discriminator, ImageResolver.getUserAvatarURL(lastMsg.author), lastMsg.content] )
+                    BdApi.saveData('ReplyReminder', 'ghosted', allGhosted) 
+                    
+                } else { 
+                    //filter the array to remove the previous message of the author.
+                    allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(lastChannelId).recipients[0]) 
+                    BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)  
+                   // console.log('all ghosted', allGhosted)
+                }
+            }
+            
+        }
+
+
         onStop() {
             BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)
             clearInterval(autoReminderModal)
            this.contextMenuPatch?.();
         }
         
-        onSwitch(){
-          const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
-          console.log(ChannelStore.getChannel(lastChannelId), 'lastchannel')
-          
-          //Check if the last visited channel is a dm
-          if(ChannelStore.getChannel(lastChannelId).name === "" && MessageStore.getMessages(lastChannelId)._array.length > 0){
-              const messages = MessageStore.getMessages(lastChannelId)._array
-              const lastMsg = messages[messages.length - 1]
-              const currentUser = UserStore.getCurrentUser()
-            
-              console.log(lastMsg.author, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
-  
-              if (lastMsg.author.id != currentUser.id){
-                  //filter the array and replace the previous message of the same author with their new message
-                  allGhosted = allGhosted.filter(g => g[0] !== lastMsg.author.id)
-                  allGhosted.push([lastMsg.author.id, lastMsg.author.username, lastMsg.author.discriminator, ImageResolver.getUserAvatarURL(lastMsg.author), lastMsg.content] )
-                  BdApi.saveData('ReplyReminder', 'ghosted', allGhosted) 
-                  
-              } else { 
-                  //filter the array to remove the previous message of the author.
-                  allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(lastChannelId).recipients[0]) 
-                  BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)  
-                 // console.log('all ghosted', allGhosted)
-              }
-          }
-        }
-        patchMessageContextMenu() {
-            this.contextMenuPatch = ContextMenu.patch("message", (retVal, props) => {
-                retVal.props.children.push(
-                    ContextMenu.buildItem({type: "separator"}),
-                    ContextMenu.buildItem({label: "Remind me!", action: () => {
-                        console.log(retVal)
-                        BdApi.showToast("Reminder Created", {type: "success"});
-                    }})
-                ); 
-               // console.log(retVal)
 
-            });
-        }
         getSettingsPanel(){
           return this.buildSettingsPanel().getElement();
         }
