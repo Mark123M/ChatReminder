@@ -132,13 +132,14 @@ const config = {
     return class RoleMembers extends Plugin {
   
         onStart() {
+            this.patchMessageContextMenu();
+
             messageBox = document.querySelector('[aria-label^="Messages in"]')
             console.log(messageBox, 'starting message box')
-            messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});
+            if(messageBox !== null){ messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});}
 
             console.log(parseInt(this.settings.reminderInterval))
 //ds
-            this.patchMessageContextMenu();
 
             allGhosted = BdApi.loadData('ReplyReminder', 'ghosted') === undefined ? [] : BdApi.loadData('ReplyReminder', 'ghosted');  //load all ghosted messages
             allReminders = BdApi.loadData('ReplyReminder', 'reminders') === undefined? [] : BdApi.loadData('ReplyReminder', 'reminders'); //load all reminders
@@ -152,7 +153,7 @@ const config = {
               this.showAutoReminderModal(allGhosted)
   
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
-            ? parseInt(this.settings.reminderInterval)*60000 : 5000)
+            ? parseInt(this.settings.reminderInterval)*60000 : 60000)
         }
 
 
@@ -194,9 +195,19 @@ const config = {
                 retVal.props.children.push(
                     ContextMenu.buildItem({type: "separator"}),
                     ContextMenu.buildItem({label: "Remind me!", action: () => {
-                        console.log(messageSelector)
+                        //retrieve the entire message data by getting the closest ancestor of type li
+                        const newMessage = messageSelector.closest('li')
+                    //    const newMessage = messageSelector.id.startsWith('message-content') ? messageSelector.parentNode.parentNode : messageSelector.parentNode.parentNode.parentNode.parentNode
+                        console.log(newMessage)
+
+                        const pfp = newMessage.children[0].children[0].children[0]
+                        const user = newMessage.children[0].children[0].children[1].children[0].children[0]
+                        const time = newMessage.children[0].children[0].children[1].children[1].children[0]
+                        const content = newMessage.children[0].children[0].children[2]
+                        console.log('pfp: ', pfp, 'user:', user, 'time: ', time, 'content: ',content)
+
                         BdApi.showToast("Reminder Created", {type: "success"});
-                        BdApi.UI.alert("Create a Reminder", newReminderModalElement)
+                        BdApi.UI.alert("Create a Reminder", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newMessage)))
                     }})
                 ); 
                // console.log(retVal)
@@ -207,7 +218,7 @@ const config = {
         onSwitch(){
             messageBox = document.querySelector('[aria-label^="Messages in"]')
             console.log(messageBox, 'new message box')
-            messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});
+            if(messageBox !== null){ messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});}
 
             const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
             console.log(ChannelStore.getChannel(lastChannelId), 'lastchannel')
@@ -218,7 +229,7 @@ const config = {
                 const lastMsg = messages[messages.length - 1]
                 const currentUser = UserStore.getCurrentUser()
               
-                console.log(lastMsg.author, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
+                //console.log(lastMsg.author, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
     
                 if (lastMsg.author.id != currentUser.id){
                     //filter the array and replace the previous message of the same author with their new message
