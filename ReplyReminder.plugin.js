@@ -200,14 +200,14 @@ const config = {
                     //    const newMessage = messageSelector.id.startsWith('message-content') ? messageSelector.parentNode.parentNode : messageSelector.parentNode.parentNode.parentNode.parentNode
                         console.log(newMessage)
 
-                        const pfp = newMessage.children[0].children[0].children[0]
+                      /*  const pfp = newMessage.children[0].children[0].children[0]
                         const user = newMessage.children[0].children[0].children[1].children[0].children[0]
                         const time = newMessage.children[0].children[0].children[1].children[1].children[0]
                         const content = newMessage.children[0].children[0].children[2]
-                        console.log('pfp: ', pfp, 'user:', user, 'time: ', time, 'content: ',content)
+                        console.log('pfp: ', pfp, 'user:', user, 'time: ', time, 'content: ',content) */
 
                         BdApi.showToast("Reminder Created", {type: "success"});
-                        BdApi.UI.alert("Create a Reminder", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newMessage)))
+                        BdApi.UI.alert("Create a Reminder", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newMessage.cloneNode(true))))
                     }})
                 ); 
                // console.log(retVal)
@@ -216,33 +216,38 @@ const config = {
 
 
         onSwitch(){
+            const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
+            //console.log(BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()) 
+            //WHAT THE FUCK THIS WORKS???? I CAN SELECT CURRENT CHANNELS FUCKCKIUDHFIUSDHFUISD
+
             messageBox = document.querySelector('[aria-label^="Messages in"]')
             console.log(messageBox, 'new message box')
             if(messageBox !== null){ messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});}
 
-            const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
-            console.log(ChannelStore.getChannel(lastChannelId), 'lastchannel')
+           // const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
+            console.log(ChannelStore.getChannel(curChannelId), 'current channel')
             
             //Check if the last visited channel is a dm
-            if(ChannelStore.getChannel(lastChannelId).name === "" && MessageStore.getMessages(lastChannelId)._array.length > 0){
-                const messages = MessageStore.getMessages(lastChannelId)._array
+            if(ChannelStore.getChannel(curChannelId).name === "" && MessageStore.getMessages(curChannelId)._array.length > 0){
+                const messages = MessageStore.getMessages(curChannelId)._array
                 const lastMsg = messages[messages.length - 1]
                 const currentUser = UserStore.getCurrentUser()
               
-                //console.log(lastMsg.author, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
+                console.log(lastMsg, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
     
                 if (lastMsg.author.id != currentUser.id){
                     //filter the array and replace the previous message of the same author with their new message
                     allGhosted = allGhosted.filter(g => g[0] !== lastMsg.author.id)
-                    allGhosted.push([lastMsg.author.id, lastMsg.author.username, lastMsg.author.discriminator, ImageResolver.getUserAvatarURL(lastMsg.author), lastMsg.content] )
+                    allGhosted.push([lastMsg.author.id,document.querySelector(`#chat-messages-${lastMsg.id}`)] )
                     BdApi.saveData('ReplyReminder', 'ghosted', allGhosted) 
                     
                 } else { 
                     //filter the array to remove the previous message of the author.
-                    allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(lastChannelId).recipients[0]) 
+                    allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(curChannelId).recipients[0]) 
                     BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)  
                    // console.log('all ghosted', allGhosted)
                 }
+                console.log(document.querySelector(`#chat-messages-${lastMsg.id}`), `#chat-messages-${lastMsg.id}`)
             }
             
         }
