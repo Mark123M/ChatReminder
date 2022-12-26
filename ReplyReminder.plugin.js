@@ -127,6 +127,7 @@ const config = {
    // const messageBox = document.querySelector("div.chat-2ZfjoI")
     let messageBox = null;
     let messageSelector = null
+    let messageObserver = null
     //BRUH IT DOES WORK IT JUST DOESNT HAVE A E.TARGET.VALUE FIELD
 
     return class RoleMembers extends Plugin {
@@ -224,6 +225,17 @@ const config = {
             console.log(messageBox, 'new message box')
             if(messageBox !== null){ messageBox.addEventListener('contextmenu', (event) => {messageSelector = event.target});}
 
+            messageObserver = new MutationObserver((mutations)=>{
+                mutations.forEach((mutation)=>{
+                    console.log(mutation)
+                })
+            })
+            messageObserver.observe(messageBox, {
+                attributes: false, 
+                childList: true, 
+                subtree: true
+            })
+
            // const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
             console.log(ChannelStore.getChannel(curChannelId), 'current channel')
             
@@ -238,7 +250,7 @@ const config = {
                 if (lastMsg.author.id != currentUser.id){
                     //filter the array and replace the previous message of the same author with their new message
                     allGhosted = allGhosted.filter(g => g[0] !== lastMsg.author.id)
-                    allGhosted.push([lastMsg.author.id,document.querySelector(`#chat-messages-${lastMsg.id}`)] )
+                    allGhosted.push([lastMsg.author.id, document.querySelector(`#chat-messages-${lastMsg.id}`)] )
                     BdApi.saveData('ReplyReminder', 'ghosted', allGhosted) 
                     
                 } else { 
@@ -256,7 +268,8 @@ const config = {
         onStop() {
             BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)
             clearInterval(autoReminderModal)
-           this.contextMenuPatch?.();
+            this.contextMenuPatch?.();
+            messageObserver.disconnect()
         }
         
 
