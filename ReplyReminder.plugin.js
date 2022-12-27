@@ -122,12 +122,13 @@ const config = {
     let allReminders = [];
     let autoReminderModal = null
     let manualReminderModal = null
-   
 
    // const messageBox = document.querySelector("div.chat-2ZfjoI")
     let messageBox = null;
     let messageSelector = null
     let messageObserver = null
+
+    let manualReminderInterval = 0
     //BRUH IT DOES WORK IT JUST DOESNT HAVE A E.TARGET.VALUE FIELD
 
     return class RoleMembers extends Plugin {
@@ -160,45 +161,83 @@ const config = {
             messageSelector = event.target
         }
         
-        createAutoReminderModal(list){
-            const autoReminderModalHTML = BdApi.DOM.parseHTML
-            ( `<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
-            ${list.map(g =>
-                `<div class = "reminderListItem" style = "display: flex; align-items: center; margin-top: 10px; margin-left: 5px;"> 
-                    <img src = ${g[3]} style = "border-radius: 50%; height: 60px; width: 60px "> 
-                    <span style= "margin-left: 12px;" > 
-                        <div class = "listItemInfo">
-                            <div class = "listItemUser" style = "font-weight: 700; color: #f8f8f9;"> 
-                              ${g[1] + " #" + g[2]} 
-                            </div>
-                            <div class = "listItemMsg" style = "margin-top: 5px;"> ${g[4]}</div>
-                        </div>
-                    </span>
-                </div>`
-            ).join("")}
-            </div>`)
-
-            const autoReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(autoReminderModalHTML))
-            BdApi.UI.alert("Auto-Reminders", autoReminderModalElement)
-        }
 
         showAutoReminderModal(list){
             const autoReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "reminderList">
                 ${list.map(g=>
-                    `<div class = "reminderListItem" style = "margin-top: 15px; display: flex;">
-                        ${g[1].includes('<img')? `${g[1]}` : 
-                        `<div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${g[2]}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${g[3].author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${g[3].content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\"></div></div>
-                        ` 
-                        /* if the message does not contain a pfp, add it */} 
+                    `<a href = ${g[4]} class = "reminderListWrapper">
+                        <div class = "reminderListItem" style = "margin-top: 15px; display: flex; cursor: pointer;">
+                            ${g[1].includes('<img')? `${g[1]}` : 
+                            `<div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${g[2]}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${g[3].author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${g[3].content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\"></div></div>
+                            ` 
+                            /* if the message does not contain a pfp, add it */} 
                         
-                    </div>`)
+                        </div>
+                    </a>`)
                 .join("")}
               </div>`)
            
             const autoReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(autoReminderModalHTML))
             BdApi.UI.alert("Auto-Reminders", autoReminderModalElement)
         } 
+
+        updateInputField(event){ 
+            manualReminderInterval = event.target.value
+            console.log(manualReminderInterval)
+        }
+
+        showNewReminderModal(msg){
+            const newReminderModalHTML = BdApi.DOM.parseHTML
+            (`<div class = "newReminder">
+                ${msg}
+                <div style = "margin-top: 20px; display: flex;">
+                    <span style = "margin-right: 7px" class="username-h_Y3Us desaturateUserColors-1O-G89SS" aria-expanded="false" role="button" tabindex="0">
+                        Remind me in:
+                    </span>
+                    <input value = ${manualReminderInterval} class = "newReminderInput" style = "width: 100px; font-size: 16px; border-radius: 2px; color: white; background-color: #202225; border:0; outline:0;" type="text" id="name" name="user_name" />
+                    <span style = "margin-left: 7px" class="username-h_Y3Us desaturateUserColors-1O-G89" aria-expanded="false" role="button" tabindex="0">
+                        minutes
+                    </span>
+                    
+                </div>
+                <span style = "color: #b9bbbe; font-size: 13px; margin-left: -1px; " class="timestamp-p1Df1m timestampInline-_lS3aK"><time aria-label="Today at 2:00 AM" id="message-timestamp-1057191193781469214" datetime="2022-12-27T07:00:22.260Z"><i class="separator-AebOhG" aria-hidden="true"> — </i>Enter a non-negative integer</time></span>
+            </div>`)
+            
+            const newReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newReminderModalHTML))
+            console.log(newReminderModalHTML)
+           // BdApi.UI.alert("Create new reminder", newReminderModalElement)
+            Modals.showModal("Create new reminder", newReminderModalElement, 
+            {danger: false, confirmText: 'Okay', cancelText: 'Cancel', onConfirm: ()=>this.createReminder(msg, manualReminderInterval)})
+
+            //update the interval value if input field changes
+            const inputField = newReminderModalHTML.querySelector('[class="newReminderInput"]')
+            inputField.addEventListener("change", this.updateInputField)
+            console.log(inputField, 'new input field')
+        }
+
+        showManualReminderModal(){
+        //    const manualReminderModalHTML
+        }
+
+        createReminder(msg, interval){
+            if(Number.isInteger(parseInt(interval)) && parseInt(interval) > 0){
+                setTimeout(()=>{
+                   // console.log(msg, 'original message')
+                    
+                    BdApi.UI.alert("Manual-Reminders", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(BdApi.DOM.parseHTML(msg))))
+                }, interval*60000)
+                BdApi.showToast("Reminder Created", {type: "success"}); 
+            }
+            else {
+                BdApi.showToast("Error Creating Reminder", {type: "error"});
+            }
+            console.log('manual reminder created')
+            manualReminderInterval = 0;
+            
+        //   
+        }
+
 
 
         patchMessageContextMenu() {
@@ -209,21 +248,24 @@ const config = {
                         //retrieve the entire message data by getting the closest ancestor of type li
                         const newMessage = messageSelector.closest('li')
                     //    const newMessage = messageSelector.id.startsWith('message-content') ? messageSelector.parentNode.parentNode : messageSelector.parentNode.parentNode.parentNode.parentNode
-                        console.log(newMessage)
+                        //console.log(newMessage.outerHTML, 'new message lol')
 
-                        BdApi.showToast("Reminder Created", {type: "success"});
-                        BdApi.UI.alert("Create a Reminder", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newMessage.children[0].cloneNode(true))))
+                      //  BdApi.UI.alert("Create a Reminder", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newMessage.children[0].cloneNode(true))))
+                        this.showNewReminderModal(newMessage.outerHTML)
                     }})
                 ); 
                // console.log(retVal)
             });
         }
 
+
+        
+
         updateAutoReminders(lastMsg){
            // console.log(lastMsg.innerText.split(/\r?\n/)[0], 'username, preprocessed')
            //if the last message text does not include [, then just take the name of the previous post, otherwise, take the current name
             const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
-            const currentUserId = UserStore.getCurrentUser()
+            const currentUserId = UserStore.getCurrentUser().id
             const messages = MessageStore.getMessages(curChannelId)._array
             console.log(messages)
             const lastUserId = messages[messages.length-1].author.id
@@ -272,7 +314,7 @@ const config = {
             //when the messageBox dom changes, and a new message is added, update auto reminders
             messageObserver = new MutationObserver((mutations)=>{
                 mutations.forEach((mutation)=>{ 
-                    if(mutation.addedNodes.length>0){
+                    if(mutation.addedNodes.length>0 && ChannelStore.getChannel(curChannelId).name === ""){
                         if(mutation.addedNodes[0].id.startsWith('chat-messages')){
                             this.updateAutoReminders(mutation.addedNodes[0])
                         }
