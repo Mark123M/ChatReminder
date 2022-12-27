@@ -40,22 +40,22 @@ const config = {
         ],
         version: "0.0.1",
         description: "Notifies you if you have ghosted someone.",
-        github: "https://github.com/Mark123M/unghost",
+        github: "https://github.com/Mark123M/ReplyReminder",
     },
     defaultConfig: [
       {
           type: "switch",
-          id: "showReminders",
-          name: "Show Reminders",
-          note: "Turning this on would show reminders",
+          id: "showAutoReminders",
+          name: "Show auto reminders",
+          note: "Turning this on would show auto reminders",
           value: true
       },
       {
           type: "textbox",
           id: "reminderInterval",
-          name: "Reminder Interval",
-          note: "Enter a positive integer to set the time interval (in minutes) between each reminder. Any other input will reset the interval to 15 min",
-          value: 10000
+          name: "Auto reminder interval",
+          note: "Enter a positive integer to set the time interval (in minutes) between each auto reminder. Any other input will reset the interval to 20 min",
+          value: 20
       } 
     ],
     changelog: [
@@ -69,6 +69,8 @@ const config = {
     ],
     main: "index.js"
   };
+
+
   
   module.exports = !global.ZeresPluginLibrary ?
   class {
@@ -99,8 +101,8 @@ const config = {
   }
    : (([Plugin, Api]) => {
      const plugin = (Plugin, Api) => {
-    const {DOM, ContextMenu, Patcher, Webpack, UI, Utils} = window.BdApi;
-    const {DiscordModules, DiscordSelectors, Utilities, Popouts, Modals} = Api;
+    const {DOM, Patcher, Webpack, UI, Utils, ContextMenu} = window.BdApi;
+    const {DiscordModules, DiscordSelectors, Utilities, Popouts, Modals, DCM, WebpackModules} = Api;
   
     const from = arr => arr && arr.length > 0 && Object.assign(...arr.map(([k, v]) => ({[k]: v})));
     const filter = (obj, predicate) => from(Object.entries(obj).filter((o) => {return predicate(o[1]);}));
@@ -117,74 +119,183 @@ const config = {
     const allDMChannels = RelationshipStore.getFriendIDs().map(id => ChannelStore.getDMFromUserId(id))
   
     let allGhosted = [];
-    let reminderModal = null
-  
-  
+    let allReminders = [];
+    let autoReminderModal = null
+    let manualReminderModal = null
+   
+
+   // const messageBox = document.querySelector("div.chat-2ZfjoI")
+    let messageBox = null;
+    let messageSelector = null
+    let messageObserver = null
+    //BRUH IT DOES WORK IT JUST DOESNT HAVE A E.TARGET.VALUE FIELD
+
     return class RoleMembers extends Plugin {
   
         onStart() {
-  
-            allGhosted = BdApi.loadData('Unghost', 'ghosted') === undefined ? [] : BdApi.loadData('Unghost', 'ghosted');  //load all previously saved reminders
-            reminderModal =  setInterval(()=>{
+            this.patchMessageContextMenu();
+
+            messageBox = document.querySelector('[aria-label^="Messages in"]')
+            console.log(messageBox, 'starting message box')
+            messageBox?.addEventListener('contextmenu', this.updateMessageSelector);
+
+            console.log(parseInt(this.settings.reminderInterval))
+
+            allGhosted = BdApi.loadData('ReplyReminder', 'ghosted') === undefined ? [] : BdApi.loadData('ReplyReminder', 'ghosted');  //load all ghosted messages
+            allReminders = BdApi.loadData('ReplyReminder', 'reminders') === undefined? [] : BdApi.loadData('ReplyReminder', 'reminders'); //load all reminders
+
+            this.showAutoReminderModal(allGhosted) //display auto reminder on startup
+
+            autoReminderModal = setInterval(()=>{
               console.log(allGhosted)
-              
-              const listHTML = BdApi.DOM.parseHTML(
-              `<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
-                  ${allGhosted.map(g =>
-                      `<div class = "reminderListItem" style = "display: flex; align-items: center; margin-top: 10px; margin-left: 5px;"> 
-                          <img src = ${g[3]} style = "border-radius: 50%; height: 60px; width: 60px "> 
-                          <span style= "margin-left: 12px;" > 
-                              <div class = "listItemInfo">
-                                  <div class = "listItemUser" style = "font-weight: 700; color: #f8f8f9;"> 
-                                    ${g[1] + " #" + g[2]} 
-                                  </div>
-                                  <div class = "listItemMsg" style = "margin-top: 5px;"> ${g[4]}</div>
-                              </div>
-                          </span>
-                      </div>`
-                  ).join("")}
-              </div>`)
-              console.log(listHTML)
-              console.log(parseInt(this.settings.reminderInterval))
-  
-             // const testHTML = BdApi.DOM.parseHTML( `<div class = "reminderList" style = "color: ;"> hello </div>`)
-              BdApi.UI.alert("Remember to respond!", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(listHTML)))
+             // console.log(parseInt(this.settings.reminderInterval))
+
+              this.showAutoReminderModal(allGhosted)
   
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
-            ? parseInt(this.settings.reminderInterval) : 3000)
+            ? parseInt(this.settings.reminderInterval)*60000 : 60000)
         }
-  
-        onStop() {
-            BdApi.saveData('Unghost', 'ghosted', allGhosted)
-            clearInterval(reminderModal)
+
+        updateMessageSelector(event){ 
+            messageSelector = event.target
         }
         
-        onSwitch(){
-          const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
-          console.log(ChannelStore.getChannel(lastChannelId), 'lastchannel')
-          
-          //Check if the last visited channel is a dm
-          if(ChannelStore.getChannel(lastChannelId).name === ""){
-              const messages = MessageStore.getMessages(lastChannelId)._array
-              const lastMsg = messages[messages.length - 1]
-              const currentUser = UserStore.getCurrentUser()
-            
-              console.log(lastMsg.author, 'sdsuofnsduifuisdhfuihsduifhuisdhfuisd');
-  
-              if (lastMsg.author.id != currentUser.id){
-                  //filter the array and replace the previous message of the same author with their new message
-                  allGhosted = allGhosted.filter(g => g[0] !== lastMsg.author.id)
-                  allGhosted.push([lastMsg.author.id, lastMsg.author.username, lastMsg.author.discriminator, ImageResolver.getUserAvatarURL(lastMsg.author), lastMsg.content] )
-                  BdApi.saveData('Unghost', 'ghosted', allGhosted) 
-                  
-              } else { 
-                  //filter the array to remove the previous message of the author.
-                  allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(lastChannelId).recipients[0]) 
-                  BdApi.saveData('Unghost', 'ghosted', allGhosted)  
-                 // console.log('all ghosted', allGhosted)
-              }
-          }
+        createAutoReminderModal(list){
+            const autoReminderModalHTML = BdApi.DOM.parseHTML
+            ( `<div class = "reminderList" style = "color: #b9bbbe; font-family: Whitney,Helvetica Neue,Helvetica,Arial,sans-serif;">
+            ${list.map(g =>
+                `<div class = "reminderListItem" style = "display: flex; align-items: center; margin-top: 10px; margin-left: 5px;"> 
+                    <img src = ${g[3]} style = "border-radius: 50%; height: 60px; width: 60px "> 
+                    <span style= "margin-left: 12px;" > 
+                        <div class = "listItemInfo">
+                            <div class = "listItemUser" style = "font-weight: 700; color: #f8f8f9;"> 
+                              ${g[1] + " #" + g[2]} 
+                            </div>
+                            <div class = "listItemMsg" style = "margin-top: 5px;"> ${g[4]}</div>
+                        </div>
+                    </span>
+                </div>`
+            ).join("")}
+            </div>`)
+
+            const autoReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(autoReminderModalHTML))
+            BdApi.UI.alert("Auto-Reminders", autoReminderModalElement)
         }
+
+        showAutoReminderModal(list){
+            const autoReminderModalHTML = BdApi.DOM.parseHTML
+            (`<div class = "reminderList">
+                ${list.map(g=>
+                    `<div class = "reminderListItem" style = "margin-top: 15px; display: flex;">
+                        ${g[1].includes('<img')? `${g[1]}` : 
+                        `<div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${g[2]}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${g[3].author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${g[3].content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\"></div></div>
+                        ` 
+                        /* if the message does not contain a pfp, add it */} 
+                        
+                    </div>`)
+                .join("")}
+              </div>`)
+           
+            const autoReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(autoReminderModalHTML))
+            BdApi.UI.alert("Auto-Reminders", autoReminderModalElement)
+        } 
+
+
+        patchMessageContextMenu() {
+            this.contextMenuPatch = ContextMenu.patch("message", (retVal, props) => {
+                retVal.props.children.push(
+                    ContextMenu.buildItem({type: "separator"}),
+                    ContextMenu.buildItem({label: "Remind me!", action: () => {
+                        //retrieve the entire message data by getting the closest ancestor of type li
+                        const newMessage = messageSelector.closest('li')
+                    //    const newMessage = messageSelector.id.startsWith('message-content') ? messageSelector.parentNode.parentNode : messageSelector.parentNode.parentNode.parentNode.parentNode
+                        console.log(newMessage)
+
+                        BdApi.showToast("Reminder Created", {type: "success"});
+                        BdApi.UI.alert("Create a Reminder", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newMessage.children[0].cloneNode(true))))
+                    }})
+                ); 
+               // console.log(retVal)
+            });
+        }
+
+        updateAutoReminders(lastMsg){
+           // console.log(lastMsg.innerText.split(/\r?\n/)[0], 'username, preprocessed')
+           //if the last message text does not include [, then just take the name of the previous post, otherwise, take the current name
+            const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
+            const currentUserId = UserStore.getCurrentUser()
+            const messages = MessageStore.getMessages(curChannelId)._array
+            console.log(messages)
+            const lastUserId = messages[messages.length-1].author.id
+            console.log(currentUserId, lastUserId);
+          //  console.log(currentUser)
+
+            if(currentUserId !== lastUserId) { //if the current user did not sent the last message
+                console.log(messages[messages.length-1], 'last message from api')
+                allGhosted = allGhosted.filter(g => g[0] !== lastUserId)
+                allGhosted.push([lastUserId, lastMsg.cloneNode(true).innerHTML, ImageResolver.getUserAvatarURL(messages[messages.length-1].author) , messages[messages.length-1],  `${lastMsg.baseURI}/${lastMsg.id.replace('chat-messages-','')}` ] )
+                BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)
+                console.log(ImageResolver.getUserAvatarURL(messages[messages.length-1].author))
+            }
+            else {
+                allGhosted = allGhosted.filter(g => g[0] !== ChannelStore.getChannel(curChannelId).recipients[0]) 
+                BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)  
+            }
+        }
+
+        onSwitch(){
+            console.log(allGhosted, 'ALL GHOSTED')
+           // console.log('FIRST MESSAGES API RETURN', MessageStore.getMessages(BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()))
+            //reset event listeners and mutation observers 
+            messageBox?.removeEventListener('contextmenu', this.updateMessageSelector)
+            messageObserver?.disconnect()
+
+            messageBox = document.querySelector('[aria-label^="Messages in"]')
+            console.log(messageBox, 'new message box')
+            messageBox?.addEventListener('contextmenu', this.updateMessageSelector);
+
+             // const lastChannelId = SelectedChannelStore.getLastSelectedChannelId()
+            const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
+            console.log(messageBox.children, 'current channel')
+            console.log(ChannelStore.getChannel(curChannelId), 'current channel api ')
+            //console.log(messageBox.children.length, 'current channel array length')
+ 
+            //if the current channel is a dm and if the last message is a message, update auto reminders
+            if(ChannelStore.getChannel(curChannelId).name === ""){
+                const lastMsg = messageBox.children[messageBox.children.length - 2]
+                //const currentUser = UserStore.getCurrentUser()
+                if(lastMsg.id.startsWith('chat-messages')){
+                    this.updateAutoReminders(lastMsg)
+                }
+            }
+
+            //when the messageBox dom changes, and a new message is added, update auto reminders
+            messageObserver = new MutationObserver((mutations)=>{
+                mutations.forEach((mutation)=>{ 
+                    if(mutation.addedNodes.length>0){
+                        if(mutation.addedNodes[0].id.startsWith('chat-messages')){
+                            this.updateAutoReminders(mutation.addedNodes[0])
+                        }
+                    }
+                })
+            })
+            messageObserver.observe(messageBox, {
+                attributes: false, 
+                childList: true, 
+                subtree: true
+            })
+            
+        }
+
+
+        onStop() {
+            BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)
+            clearInterval(autoReminderModal)
+            this.contextMenuPatch?.();
+            messageObserver.disconnect()
+        }
+        
+
         getSettingsPanel(){
           return this.buildSettingsPanel().getElement();
         }
