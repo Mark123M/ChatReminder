@@ -46,16 +46,23 @@ const config = {
       {
           type: "switch",
           id: "showAutoReminders",
-          name: "Show auto reminders",
+          name: "Show Auto-Reminders",
           note: "Turning this on would show auto reminders",
           value: true
       },
       {
           type: "textbox",
           id: "reminderInterval",
-          name: "Auto reminder interval",
+          name: "Auto Reminder-Interval",
           note: "Enter a positive integer to set the time interval (in minutes) between each auto reminder. Any other input will reset the interval to 20 min",
           value: 20
+      },
+      {
+        type: "textbox",
+        id: "notificationSoundURL",
+        name: "Notification Sound",
+        note: "Enter a custom sound file link/URL",
+        value: "https://drive.google.com/uc?id=1_qB9XE7-7XRJ6HjokId2-Y_pWj2WgEc7"
       } 
     ],
     changelog: [
@@ -115,6 +122,9 @@ const config = {
     const MessageActions = DiscordModules.MessageActions;
     const ChannelStore = DiscordModules.ChannelStore;
     const SelectedChannelStore = DiscordModules.SelectedChannelStore;
+    const SoundModule = DiscordModules.SoundModule;
+    const NavigationUtils = DiscordModules.NavigationUtils
+    const MentionStore = DiscordModules.MentionStore
   
     const allDMChannels = RelationshipStore.getFriendIDs().map(id => ChannelStore.getDMFromUserId(id))
   
@@ -131,10 +141,14 @@ const config = {
     let manualReminderInterval = 0
     //BRUH IT DOES WORK IT JUST DOESNT HAVE A E.TARGET.VALUE FIELD
 
+    //let audio = new Audio('https://drive.google.com/uc?id=1_qB9XE7-7XRJ6HjokId2-Y_pWj2WgEc7')
+
     return class RoleMembers extends Plugin {
   
         onStart() {
             this.patchMessageContextMenu();
+
+           // console.log(audio, 'MY AUDIO')
 
             messageBox = document.querySelector('[aria-label^="Messages in"]')
             console.log(messageBox, 'starting message box')
@@ -151,46 +165,58 @@ const config = {
               console.log(allGhosted)
              // console.log(parseInt(this.settings.reminderInterval))
 
+             new Audio(this.settings.notificationSoundURL).play().then((res)=>{
+                console.log('audio played')
+              })
+              .catch(function(error) {
+                console.log(error)
+              });
+
               this.showAutoReminderModal(allGhosted)
   
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
             ? parseInt(this.settings.reminderInterval)*60000 : 60000)
         }
 
+        
         updateMessageSelector(event){ 
             messageSelector = event.target
         }
         
 
         showAutoReminderModal(list){
+
             const autoReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "reminderList">
                 ${list.map(g=>
-                    `<a href = ${g[4]} class = "reminderListWrapper">
-                        <div class = "reminderListItem" style = "margin-top: 15px; display: flex; cursor: pointer;">
-                            ${g[1].includes('<img')? `${g[1]}` : 
-                            `<div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${g[2]}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${g[3].author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${g[3].content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\"></div></div>
-                            ` 
+                    `<div class = "reminderListItem" style = "margin-top: 15px; display: flex; cursor: pointer;">
+                        ${g[1].includes(`class="avatar`)? `${g[1]}` : 
+                        `<div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${g[2]}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${g[3].author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${g[3].content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\">${g[5]}</div></div>` 
                             /* if the message does not contain a pfp, add it */} 
-                        
-                        </div>
-                    </a>`)
+                    </div>`)
                 .join("")}
               </div>`)
            
+            const HTMLList = autoReminderModalHTML.querySelectorAll('.reminderListItem')
+            for(let i = 0; i<list.length; i++){
+                HTMLList[i].addEventListener('click', ()=>this.jumpToMessage(list[i][3]))
+            }
+
             const autoReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(autoReminderModalHTML))
             BdApi.UI.alert("Auto-Reminders", autoReminderModalElement)
         } 
+
 
         updateInputField(event){ 
             manualReminderInterval = event.target.value
             console.log(manualReminderInterval)
         }
 
+
         showNewReminderModal(msg){
             const newReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "newReminder">
-                ${msg}
+                ${msg.outerHTML}
                 <div style = "margin-top: 20px; display: flex;">
                     <span style = "margin-right: 7px" class="username-h_Y3Us desaturateUserColors-1O-G89SS" aria-expanded="false" role="button" tabindex="0">
                         Remind me in:
@@ -203,30 +229,81 @@ const config = {
                 </div>
                 <span style = "color: #b9bbbe; font-size: 13px; margin-left: -1px; " class="timestamp-p1Df1m timestampInline-_lS3aK"><time aria-label="Today at 2:00 AM" id="message-timestamp-1057191193781469214" datetime="2022-12-27T07:00:22.260Z"><i class="separator-AebOhG" aria-hidden="true"> — </i>Enter a non-negative integer</time></span>
             </div>`)
-            
+            const inputField = newReminderModalHTML.querySelector('[class="newReminderInput"]')
+            inputField.addEventListener("change", this.updateInputField)
+            console.log(inputField, 'new input field')
+
             const newReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newReminderModalHTML))
             console.log(newReminderModalHTML)
            // BdApi.UI.alert("Create new reminder", newReminderModalElement)
             Modals.showModal("Create new reminder", newReminderModalElement, 
-            {danger: false, confirmText: 'Okay', cancelText: 'Cancel', onConfirm: ()=>this.createReminder(msg, manualReminderInterval)})
-
+            {danger: false, confirmText: 'Okay', cancelText: 'Cancel', 
+            onConfirm: ()=>{
+                this.createReminder(msg, manualReminderInterval)
+                inputField.removeEventListener("change", this.updateInputField)
+            }})
             //update the interval value if input field changes
-            const inputField = newReminderModalHTML.querySelector('[class="newReminderInput"]')
-            inputField.addEventListener("change", this.updateInputField)
-            console.log(inputField, 'new input field')
         }
 
-        showManualReminderModal(){
-        //    const manualReminderModalHTML
+
+        showManualReminderModal(msg, interval){
+            const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
+            const messages = MessageStore.getMessages(curChannelId)._array
+            console.log(messages)
+           // console.log(MessageActions.jumpToMessage)
+            console.log(NavigationUtils.transitionTo)
+          //  console.log(messages[2].channel_id, messages[2].id)
+
+            const messageId = msg.id.replace('chat-messages-', '')
+            const messageApi = messages.find(m=>m.id === messageId)
+
+          //  MessageActions.jumpToMessage({channelId: messages[2].channel_id, messageId: messages[2].id})
+
+            let manualReminderModalHTML = null;
+            if(msg.outerHTML.includes(`class="avatar`)){
+                manualReminderModalHTML = 
+                BdApi.DOM.parseHTML(`<div class = "reminderListItem" style = "margin-top: 15px; display: flex; cursor: pointer;">${msg.outerHTML}</div>`)
+            }
+            else {
+                manualReminderModalHTML = 
+                BdApi.DOM.parseHTML(`<div class = "reminderListItem" style = "margin-top: 15px; display: flex; cursor: pointer;"> <div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${ImageResolver.getUserAvatarURL(messageApi.author)}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${messageApi.author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${messageApi.content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\">${msg.querySelector(`[id^="message-accessories-"]`).cloneNode(true).innerHTML}</div></div></div>`)
+            }
+            manualReminderModalHTML.addEventListener("click", ()=>this.jumpToMessage(messageApi))
+            console.log(manualReminderModalHTML, 'modal HTML')
+            const manualReminderModalElement = BdApi.React.createElement(BdApi.ReactUtils.wrapElement(manualReminderModalHTML))
+
+            setTimeout(()=>{
+               
+                new Audio(this.settings.notificationSoundURL).play().then((res)=>{
+                    console.log('audio played')
+                })
+                .catch(function(error) {
+                    console.log(error)
+                });
+                BdApi.UI.alert("Manual-Reminders", manualReminderModalElement)
+            }, interval * 60000)
+           
         }
+
+
+        jumpToMessage(msg){
+            console.log(MentionStore.getMentions, 'MY MENTIONS')
+            console.log(MentionStore.getMentions(), 'MY MENTIONS BREAKPOINT')
+            const channel = ChannelStore.getChannel(msg.channel_id)
+            console.log(channel)
+            NavigationUtils.transitionTo(`/channels/${channel.guild_id===null? '@me' : channel.guild_id}/${channel.id}`)
+            MessageActions.jumpToMessage({channelId: msg.channel_id, messageId: msg.id, flash: true})
+        }
+
 
         createReminder(msg, interval){
+            console.log(msg,'MESSAGEHTML')
             if(Number.isInteger(parseInt(interval)) && parseInt(interval) > 0){
-                setTimeout(()=>{
+               // setTimeout(()=>{
                    // console.log(msg, 'original message')
-                    
-                    BdApi.UI.alert("Manual-Reminders", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(BdApi.DOM.parseHTML(msg))))
-                }, interval*60000)
+                    this.showManualReminderModal(msg, parseInt(interval))
+                  //  BdApi.UI.alert("Manual-Reminders", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(BdApi.DOM.parseHTML(msg))))
+               // }, interval*60000)
                 BdApi.showToast("Reminder Created", {type: "success"}); 
             }
             else {
@@ -237,7 +314,6 @@ const config = {
             
         //   
         }
-
 
 
         patchMessageContextMenu() {
@@ -251,15 +327,13 @@ const config = {
                         //console.log(newMessage.outerHTML, 'new message lol')
 
                       //  BdApi.UI.alert("Create a Reminder", BdApi.React.createElement(BdApi.ReactUtils.wrapElement(newMessage.children[0].cloneNode(true))))
-                        this.showNewReminderModal(newMessage.outerHTML)
+                        this.showNewReminderModal(newMessage)
                     }})
                 ); 
                // console.log(retVal)
             });
         }
 
-
-        
 
         updateAutoReminders(lastMsg){
            // console.log(lastMsg.innerText.split(/\r?\n/)[0], 'username, preprocessed')
@@ -275,7 +349,7 @@ const config = {
             if(currentUserId !== lastUserId) { //if the current user did not sent the last message
                 console.log(messages[messages.length-1], 'last message from api')
                 allGhosted = allGhosted.filter(g => g[0] !== lastUserId)
-                allGhosted.push([lastUserId, lastMsg.cloneNode(true).innerHTML, ImageResolver.getUserAvatarURL(messages[messages.length-1].author) , messages[messages.length-1],  `${lastMsg.baseURI}/${lastMsg.id.replace('chat-messages-','')}` ] )
+                allGhosted.push([lastUserId, lastMsg.cloneNode(true).innerHTML, ImageResolver.getUserAvatarURL(messages[messages.length-1].author) , messages[messages.length-1],  `${lastMsg.baseURI}/${lastMsg.id.replace('chat-messages-','')}`, lastMsg.querySelector(`[id^="message-accessories-"]`).cloneNode(true).innerHTML  ] )
                 BdApi.saveData('ReplyReminder', 'ghosted', allGhosted)
                 console.log(ImageResolver.getUserAvatarURL(messages[messages.length-1].author))
             }
@@ -285,7 +359,9 @@ const config = {
             }
         }
 
+
         onSwitch(){
+           // BdApi.findModuleByProps('playSound').playSound('discodo', 1);
             console.log(allGhosted, 'ALL GHOSTED')
            // console.log('FIRST MESSAGES API RETURN', MessageStore.getMessages(BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()))
             //reset event listeners and mutation observers 
