@@ -1,4 +1,4 @@
-# ReplyReminder
+# ChatReminder
 
 A Discord plugin that reminds you to reply to messages or just view them again. 
 
