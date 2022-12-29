@@ -6,3 +6,4 @@ A Discord plugin that reminds you to reply to messages or just view them again.
 2. Manual-Reminder System: Right click a message and click "Remind Me!" to set a reminder that displays a modal for the message
    after a set amount of time. 
 
+You can instantly navigate to the reminder message by clicking on it. You can also set custom notification sounds for the reminders.
