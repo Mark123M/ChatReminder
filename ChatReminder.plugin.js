@@ -63,7 +63,7 @@ const config = {
           title: "Deployment",
           type: "fixed",
           items: [
-          "Auto-Reminder System: For every interval of time (set by user), a modal will pop up to display the messages in your DM convos that you haven't or forgot to reply to",
+          "Auto-Reminder System: Looks through dms and stores ongoing conversations. For every interval of time (set by user), a modal will pop up to display the last messages that you haven't replied to.",      
           "Manual-Reminder System: Right click a message and click \"Remind Me!\" to set a reminder that displays a modal for the message after a set amount of time."
           ]
         }
@@ -192,7 +192,8 @@ const config = {
         
 
         showAutoReminderModal(list){
-
+            //filter out the dms that the user is currently talking in
+            list = list.filter(g => g[3].channel_id !== BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId())
             const autoReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "reminderWrapper">
                     ${list.map(g=> //add id from api as id of element
@@ -349,7 +350,8 @@ const config = {
 
 
         onSwitch(){
-          
+            console.log(MentionStore.getMentions)
+
             //reset event listeners and mutation observers 
             messageBox?.removeEventListener('contextmenu', this.updateMessageSelector)
             messageObserver?.disconnect()
