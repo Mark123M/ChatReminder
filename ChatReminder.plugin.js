@@ -238,7 +238,7 @@ const config = {
 
             const newReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "newReminder">
-                ${msg.outerHTML}
+                ${msg.innerHTML}
                 <div style = "margin-top: 20px; display: flex;">
                     <span style = "margin-right: 7px" class="username-h_Y3Us desaturateUserColors-1O-G89SS" aria-expanded="false" role="button" tabindex="0">
                         Remind me in:
