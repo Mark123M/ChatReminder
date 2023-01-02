@@ -1,6 +1,6 @@
 /**
  * @name ChatReminder
- * @description Allows you to see the members of each role on a server.
+ * @description Right click a message and pick "Set Reminder" to set a reminder. Also looks through dms and auto-reminds users of messages they forgot or haven't responded to.  
  * @version 0.0.1
  * @author Mark123
  * @authorId 249746236008169473
@@ -47,8 +47,8 @@ const config = {
           type: "textbox",
           id: "reminderInterval",
           name: "Auto Reminder-Interval",
-          note: "Enter a positive integer to set the time interval (in minutes) between each auto reminder. Any other input will reset the interval to 20 min",
-          value: 20
+          note: "Enter a positive integer to set the time interval (in minutes) between each auto reminder. Any other input will reset the interval to 30 min",
+          value: 30
       },
       {
         type: "textbox",
@@ -63,8 +63,8 @@ const config = {
           title: "Deployment",
           type: "fixed",
           items: [
-          "Auto-Reminder System: Looks through dms and stores ongoing conversations. For every interval of time (set by user), a modal will pop up to display the last messages that you haven't replied to.",      
-          "Manual-Reminder System: Right click a message and click \"Remind Me!\" to set a reminder that displays a modal for the message after a set amount of time."
+          "Auto-Reminder System: Looks through dms and reminds user after a time interval of messages they forgot or haven't responded to.",      
+          "Manual-Reminder System: Right click a message and click \"Set Reminder\" to set a reminder that displays the message after a set amount of time."
           ]
         }
     ],
@@ -161,7 +161,7 @@ const config = {
               this.showAutoReminderModal(allGhosted)
   
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
-            ? parseInt(this.settings.reminderInterval)*60000 : 60000)
+            ? parseInt(this.settings.reminderInterval)*60000 : 30 * 60000)
 
             manualReminderModal = setInterval(()=>{ //check every reminder every 30 seconds
                 let newAllReminders = []
@@ -317,7 +317,7 @@ const config = {
             this.contextMenuPatch = ContextMenu.patch("message", (retVal, props) => {
                 retVal.props.children.push(
                     ContextMenu.buildItem({type: "separator"}),
-                    ContextMenu.buildItem({label: "Remind me!", action: () => {
+                    ContextMenu.buildItem({label: "Set Reminder", action: () => {
                         //retrieve the entire message data by getting the closest ancestor of type li
                         const newMessage = messageSelector.closest('li')
                    
