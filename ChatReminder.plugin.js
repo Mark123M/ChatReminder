@@ -39,7 +39,7 @@ const config = {
             }
         ],
         version: "0.0.1",
-        description: "Notifies you if you have ghosted someone.",
+        description: "Right click a message and pick \"Set Reminder\" to set a reminder. Also looks through dms and auto-reminds users of messages they forgot to or haven't responded to.",
         github: "https://github.com/Mark123M/ChatReminder",
     },
     defaultConfig: [
