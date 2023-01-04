@@ -197,13 +197,13 @@ const config = {
             const autoReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "reminderWrapper">
                     ${list.map(g=> //add id from api as id of element
-                        `<div class = "reminderList" id = ${g[3].id} style = "display:flex; align-items: center;">
-                            <div class = "reminderListItem" style = "margin-top: 15px; display: flex; cursor: pointer;">
+                        `<div class = "reminderList" id = ${g[3].id} style = "align-items: center;">
+                            <div class = "closeButton" style = "color: white; font-size: 22px; margin-left: 98%; margin-bottom: -30px; margin-top: 15px;"> × </div>
+                            <div class = "reminderListItem" style = "margin-top: 15px; margin-left: -10px; display: flex; cursor: pointer;">
                                 ${g[1].includes(`class="avatar`)? `${g[1]}` : 
                                 `<div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${g[2]}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${g[3].author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${g[3].content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\">${g[5]}</div></div>` 
                                     /* if the message does not contain a pfp, add it */} 
-                            </div>
-                            <div class = "closeButton" style = "color: white; font-size: 22px; margin-left: auto"> × </div>
+                            </div> 
                         </div>`)
                     .join("")}
               </div>`)
