@@ -1,6 +1,6 @@
 # ChatReminder
 
-A Discord plugin that reminds you to reply to messages or just view them again. 
+A Discord plugin that automatically and manually creates reminders for messages
 
 1. Auto-Reminder System: For every interval of time (set by user), a modal will pop up to display the messages in your DM convos that you haven't or forgot to reply to.
 2. Manual-Reminder System: Right click a message and click "Set Reminder" to set a reminder that displays a modal for the message
