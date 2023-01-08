@@ -102,31 +102,23 @@ const config = {
   }
    : (([Plugin, Api]) => {
      const plugin = (Plugin, Api) => {
-    const {DOM, Patcher, Webpack, UI, Utils, ContextMenu} = window.BdApi;
-    const {DiscordModules, DiscordSelectors, Utilities, Popouts, Modals, DCM, WebpackModules} = Api;
-  
-    const from = arr => arr && arr.length > 0 && Object.assign(...arr.map(([k, v]) => ({[k]: v})));
-    const filter = (obj, predicate) => from(Object.entries(obj).filter((o) => {return predicate(o[1]);}));
+    const {ContextMenu} = window.BdApi;
+    const {DiscordModules, Modals} = Api;
   
     const UserStore = DiscordModules.UserStore;
     const ImageResolver = DiscordModules.ImageResolver;
   
-    const RelationshipStore = DiscordModules.RelationshipStore;
     const MessageStore = DiscordModules.MessageStore;
     const MessageActions = DiscordModules.MessageActions;
     const ChannelStore = DiscordModules.ChannelStore;
-    const SelectedChannelStore = DiscordModules.SelectedChannelStore;
-    const SoundModule = DiscordModules.SoundModule;
     const NavigationUtils = DiscordModules.NavigationUtils
     const MentionStore = DiscordModules.MentionStore
-  
-    const allDMChannels = RelationshipStore.getFriendIDs().map(id => ChannelStore.getDMFromUserId(id))
+    const ChannelActions = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId);
   
     let allGhosted = [];
     let allReminders = [];
     let autoReminderModal = null
     let manualReminderModal = null
-
  
     let messageBox = null;
     let messageSelector = null
@@ -193,7 +185,7 @@ const config = {
 
         showAutoReminderModal(list){
             //filter out the dms that the user is currently talking in
-            list = list.filter(g => g[3].channel_id !== BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId())
+            list = list.filter(g => g[3].channel_id !== ChannelActions.getChannelId())
             const autoReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "reminderWrapper">
                     ${list.map(g=> //add id from api as id of element
@@ -231,7 +223,7 @@ const config = {
         }
 
         showNewReminderModal(msg){
-            const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
+            const curChannelId = ChannelActions.getChannelId()
             const messages = MessageStore.getMessages(curChannelId)._array
             const messageId = msg.id.replace('chat-messages-', '')
             const messageApi = messages.find(m=>m.id === messageId)
@@ -330,7 +322,7 @@ const config = {
 
 
         updateAutoReminders(lastMsg){
-            const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
+            const curChannelId = ChannelActions.getChannelId()
             const currentUserId = UserStore.getCurrentUser().id
             const messages = MessageStore.getMessages(curChannelId)._array
           //  console.log(messages)
@@ -360,7 +352,7 @@ const config = {
         //    console.log(messageBox, 'new message box')
             messageBox?.addEventListener('contextmenu', this.updateMessageSelector);
 
-            const curChannelId = BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId()
+            const curChannelId = ChannelActions.getChannelId()
         //    console.log(messageBox.children, 'current channel')
 
             //if the current channel is a dm and if the last message is a message, update auto reminders
