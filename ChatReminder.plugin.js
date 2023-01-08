@@ -1,6 +1,6 @@
 /**
  * @name ChatReminder
- * @description Allows you to see the members of each role on a server.
+ * @description Right click a message and pick "Set Reminder" to set a reminder. Also looks through dms and auto-reminds users of messages they forgot or haven't responded to.  
  * @version 0.0.1
  * @author Mark123
  * @authorId 249746236008169473
@@ -39,7 +39,7 @@ const config = {
             }
         ],
         version: "0.0.1",
-        description: "Notifies you if you have ghosted someone.",
+        description: "Right click a message and pick \"Set Reminder\" to set a reminder. Also looks through dms and auto-reminds users of messages they forgot to or haven't responded to.",
         github: "https://github.com/Mark123M/ChatReminder",
     },
     defaultConfig: [
@@ -47,8 +47,8 @@ const config = {
           type: "textbox",
           id: "reminderInterval",
           name: "Auto Reminder-Interval",
-          note: "Enter a positive integer to set the time interval (in minutes) between each auto reminder. Any other input will reset the interval to 20 min",
-          value: 20
+          note: "Enter a positive integer to set the time interval (in minutes) between each auto reminder. Any other input will reset the interval to 30 min",
+          value: 30
       },
       {
         type: "textbox",
@@ -63,8 +63,8 @@ const config = {
           title: "Deployment",
           type: "fixed",
           items: [
-          "Auto-Reminder System: For every interval of time (set by user), a modal will pop up to display the messages in your DM convos that you haven't or forgot to reply to",
-          "Manual-Reminder System: Right click a message and click \"Remind Me!\" to set a reminder that displays a modal for the message after a set amount of time."
+          "Auto-Reminder System: Looks through dms and reminds user after a time interval of messages they forgot or haven't responded to.",      
+          "Manual-Reminder System: Right click a message and click \"Set Reminder\" to set a reminder that displays the message after a set amount of time."
           ]
         }
     ],
@@ -161,7 +161,7 @@ const config = {
               this.showAutoReminderModal(allGhosted)
   
             }, Number.isInteger(parseInt(this.settings.reminderInterval)) && parseInt(this.settings.reminderInterval) > 0
-            ? parseInt(this.settings.reminderInterval)*60000 : 60000)
+            ? parseInt(this.settings.reminderInterval)*60000 : 30 * 60000)
 
             manualReminderModal = setInterval(()=>{ //check every reminder every 30 seconds
                 let newAllReminders = []
@@ -192,17 +192,18 @@ const config = {
         
 
         showAutoReminderModal(list){
-
+            //filter out the dms that the user is currently talking in
+            list = list.filter(g => g[3].channel_id !== BdApi.Webpack.getModule(m => m.getLastSelectedChannelId && m.getChannelId).getChannelId())
             const autoReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "reminderWrapper">
                     ${list.map(g=> //add id from api as id of element
-                        `<div class = "reminderList" id = ${g[3].id} style = "display:flex; align-items: center;">
-                            <div class = "reminderListItem" style = "margin-top: 15px; display: flex; cursor: pointer;">
+                        `<div class = "reminderList" id = ${g[3].id} style = "align-items: center;">
+                            <div class = "closeButton" style = "color: white; font-size: 22px; margin-left: 98%; margin-bottom: -30px; margin-top: 15px;"> × </div>
+                            <div class = "reminderListItem" style = "margin-top: 15px; margin-left: -10px; display: flex; cursor: pointer;">
                                 ${g[1].includes(`class="avatar`)? `${g[1]}` : 
                                 `<div class=\"message-2CShn3 cozyMessage-1DWF9U groupStart-3Mlgv1 wrapper-30-Nkg cozy-VmLDNB zalgo-26OfGz\" role=\"article\" data-list-item-id=\"chat-messages___chat-messages-1057098653963141170\" tabindex=\"-1\" aria-setsize=\"-1\" aria-roledescription=\"Message\" aria-labelledby=\"message-username-1057098653963141170 uid_1 message-content-1057098653963141170 uid_2 message-timestamp-1057098653963141170\"><div class=\"contents-2MsGLg\"><img src=\"${g[2]}\" aria-hidden=\"true\" class=\"avatar-2e8lTP clickable-31pE3P\" alt=\" \"><h3 class=\"header-2jRmjb\" aria-labelledby=\"message-username-1057098653963141170 message-timestamp-1057098653963141170\"><span id=\"message-username-1057098653963141170\" class=\"headerText-2z4IhQ\"><span class=\"username-h_Y3Us desaturateUserColors-1O-G89 clickable-31pE3P\" aria-expanded=\"false\" role=\"button\" tabindex=\"0\">${g[3].author.username}</span></span><span class=\"timestamp-p1Df1m timestampInline-_lS3aK\"><time aria-label=\"Today at 7:52 PM\" id=\"message-timestamp-1057098653963141170\" datetime=\"2022-12-27T00:52:39.048Z\"><i class=\"separator-AebOhG\" aria-hidden=\"true\"> — </i> —— </time></span></h3><div id=\"message-content-1057098653963141170\" class=\"markup-eYLPri messageContent-2t3eCI\">${g[3].content}</div></div><div id=\"message-accessories-1057098653963141170\" class=\"container-2sjPya\">${g[5]}</div></div>` 
                                     /* if the message does not contain a pfp, add it */} 
-                            </div>
-                            <div class = "closeButton" style = "color: white; font-size: 22px; margin-left: auto"> × </div>
+                            </div> 
                         </div>`)
                     .join("")}
               </div>`)
@@ -237,7 +238,7 @@ const config = {
 
             const newReminderModalHTML = BdApi.DOM.parseHTML
             (`<div class = "newReminder">
-                ${msg.outerHTML}
+                ${msg.innerHTML}
                 <div style = "margin-top: 20px; display: flex;">
                     <span style = "margin-right: 7px" class="username-h_Y3Us desaturateUserColors-1O-G89SS" aria-expanded="false" role="button" tabindex="0">
                         Remind me in:
@@ -316,7 +317,7 @@ const config = {
             this.contextMenuPatch = ContextMenu.patch("message", (retVal, props) => {
                 retVal.props.children.push(
                     ContextMenu.buildItem({type: "separator"}),
-                    ContextMenu.buildItem({label: "Remind me!", action: () => {
+                    ContextMenu.buildItem({label: "Set Reminder", action: () => {
                         //retrieve the entire message data by getting the closest ancestor of type li
                         const newMessage = messageSelector.closest('li')
                    
@@ -349,7 +350,8 @@ const config = {
 
 
         onSwitch(){
-          
+            console.log(MentionStore.getMentions)
+
             //reset event listeners and mutation observers 
             messageBox?.removeEventListener('contextmenu', this.updateMessageSelector)
             messageObserver?.disconnect()
