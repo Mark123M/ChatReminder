@@ -7,3 +7,5 @@ A Discord plugin that automatically and manually creates reminders for messages
    after a set amount of time. 
 
 You can instantly navigate to the reminder message by clicking on it. You can also set custom notification sounds for the reminders in settings.
+
+![thumbnail](https://user-images.githubusercontent.com/84888860/212148258-e85a4f1d-ee2d-4dd5-977b-f28e643612ce.png)
